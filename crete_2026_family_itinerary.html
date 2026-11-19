@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crete 2026 — Family Itinerary</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Playfair Display for Mediterranean editorial headers + Inter for crisp UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS for Interactive Crete Map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <!-- Tailwind Custom Theme Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            serif: ['Playfair Display', 'Georgia', 'serif'],
+          },
+          colors: {
+            limestone: '#FAF7F2',
+            sand: '#F2ECE1',
+            aegean: {
+              DEFAULT: '#1B4965',
+              light: '#2A6B8F',
+              dark: '#123347',
+            },
+            olive: {
+              DEFAULT: '#4E6B50',
+              light: '#EBF2EC',
+            },
+            terracotta: {
+              DEFAULT: '#C26745',
+              light: '#FDF1EC',
+            },
+            ochre: '#D4A373',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    /* Subtle scrollbar hiding for horizontal day-picker strip */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Ensure Leaflet map tiles and popups blend nicely */
+    .leaflet-popup-content-wrapper {
+      border-radius: 0.75rem;
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+    .leaflet-container {
+      font-family: 'Inter', system-ui, sans-serif;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body class="bg-limestone text-stone-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Toast Notification (replaces alert()) -->
+  <div
+    id="toast"
+    role="status"
+    aria-live="polite"
+    class="fixed bottom-20 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 translate-y-2"
+  >
+    <div class="bg-aegean-dark text-white text-sm font-medium px-5 py-3 rounded-full shadow-lg flex items-center gap-2 border border-white/10">
+      <svg class="w-4 h-4 text-emerald-300 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      <span id="toast-message">Copied to clipboard</span>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <header class="relative overflow-hidden bg-gradient-to-br from-aegean-dark via-aegean to-aegean-light text-white">
+    <!-- Decorative subtle Mediterranean wave/sunlight accents -->
+    <div class="pointer-events-none absolute -top-24 -right-24 w-80 h-80 rounded-full bg-ochre/15 blur-3xl"></div>
+    <div class="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-emerald-300/10 blur-3xl"></div>
+
+    <div class="relative max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-7 sm:pt-10 sm:pb-9">
+      <!-- Top utility bar: Live Crete Clock & Share button -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/15 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium">
+          <span class="w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+          <span>Crete Local Time: <strong id="crete-clock" class="font-semibold">--:--</strong> (EET)</span>
+        </div>
+
+        <button
+          id="btn-copy-summary"
+          type="button"
+          class="inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 active:scale-95 transition text-white text-xs sm:text-sm font-medium px-3.5 py-2 rounded-full border border-white/20 cursor-pointer"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          <span>Copy Trip Summary</span>
+        </button>
+      </div>
+
+      <!-- Title & Metadata -->
+      <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <p class="uppercase tracking-[0.2em] text-xs font-semibold text-ochre mb-2">
+            Family Trip Guide · Pigi Village, Rethymno
+          </p>
+          <h1 class="font-serif text-4xl sm:text-5xl font-bold tracking-tight text-white">
+            Crete 2026
+          </h1>
+          <p class="mt-2.5 text-sm sm:text-base text-sky-100/90 max-w-xl leading-relaxed">
+            Mon 23 Nov – Sat 28 Nov 2026 <span class="opacity-60 mx-1">•</span> Early arrivals Sun 22 Nov <span class="opacity-60 mx-1">•</span> 14 Guests
+          </p>
+        </div>
+
+        <!-- Countdown Pill -->
+        <div id="countdown-card" class="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl px-4 py-3 sm:px-5 sm:py-3.5 shrink-0">
+          <p id="countdown-label" class="text-[11px] uppercase tracking-wider text-sky-200 font-semibold mb-1">
+            Countdown to Check-in
+          </p>
+          <div id="countdown-value" class="font-serif text-xl sm:text-2xl font-bold text-white">
+            Loading...
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Links Bar -->
+      <div class="mt-6 flex flex-wrap gap-2.5">
+        <a
+          href="https://maps.app.goo.gl/nRNBrYqobcNfegdF9?g_st=ic"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 bg-white text-aegean-dark hover:bg-sand transition font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm"
+        >
+          <svg class="w-4 h-4 text-terracotta shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Villa Maps Pin (Pigi 74150)</span>
+        </a>
+
+        <a
+          href="https://docs.google.com/spreadsheets/d/1luNSuunYf-wndDNgNeLcIEW4yImsfbshw3T9Q8QGH18"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 bg-olive hover:bg-olive/90 text-white transition font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-sm border border-white/10"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+          </svg>
+          <span>Live Planning Tracker Sheet</span>
+        </a>
+
+        <button
+          type="button"
+          onclick="switchTab('flights')"
+          class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white transition font-medium text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-white/20 cursor-pointer"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+          <span>Find My Flight</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Sticky Primary Navigation Tabs -->
+  <nav class="sticky top-0 z-30 bg-limestone/95 backdrop-blur-md border-b border-stone-200/80 shadow-sm">
+    <div class="max-w-5xl mx-auto px-3 sm:px-6">
+      <div class="flex items-center justify-between sm:justify-start gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-2.5" role="tablist">
+        <button
+          id="tab-btn-itinerary"
+          role="tab"
+          aria-selected="true"
+          onclick="switchTab('itinerary')"
+          class="tab-btn flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition cursor-pointer bg-aegean text-white shadow-sm"
+        >
+          <span>📅</span>
+          <span>Itinerary</span>
+        </button>
+        <button
+          id="tab-btn-flights"
+          role="tab"
+          aria-selected="false"
+          onclick="switchTab('flights')"
+          class="tab-btn flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition cursor-pointer text-stone-600 hover:bg-sand"
+        >
+          <span>✈️</span>
+          <span>Flights</span>
+        </button>
+        <button
+          id="tab-btn-map"
+          role="tab"
+          aria-selected="false"
+          onclick="switchTab('map')"
+          class="tab-btn flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition cursor-pointer text-stone-600 hover:bg-sand"
+        >
+          <span>🗺️</span>
+          <span>Island Map</span>
+        </button>
+        <button
+          id="tab-btn-planning"
+          role="tab"
+          aria-selected="false"
+          onclick="switchTab('planning')"
+          class="tab-btn flex items-center gap-1.5 px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition cursor-pointer text-stone-600 hover:bg-sand"
+        >
+          <span>✅</span>
+          <span>Tasks &amp; Costs</span>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 1: DAILY ITINERARY                                               -->
+    <!-- ===================================================================== -->
+    <section id="view-itinerary" class="tab-panel space-y-6">
+
+      <!-- View Switcher: Day-by-Day Cards vs. Full Week Overview Table -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="font-serif text-2xl sm:text-3xl font-bold text-aegean-dark">Day-by-Day Plan</h2>
+          <p class="text-xs sm:text-sm text-stone-500 mt-0.5">All times are local to Crete (EET). <span class="font-medium text-stone-600">TBC</span> = to be confirmed.</p>
+        </div>
+
+        <div class="inline-flex bg-sand p-1 rounded-xl self-start sm:self-auto">
+          <button
+            id="btn-mode-daily"
+            type="button"
+            onclick="setItineraryMode('daily')"
+            class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer bg-white text-aegean-dark shadow-sm"
+          >
+            Daily Detail
+          </button>
+          <button
+            id="btn-mode-overview"
+            type="button"
+            onclick="setItineraryMode('overview')"
+            class="px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer text-stone-600 hover:text-stone-900"
+          >
+            Week at a Glance
+          </button>
+        </div>
+      </div>
+
+      <!-- Daily Detail Mode -->
+      <div id="itinerary-daily-container" class="space-y-5">
+        <!-- Scrollable Day Selector Pills -->
+        <div id="day-pills" class="flex gap-2 overflow-x-auto no-scrollbar pb-1" aria-label="Select a day">
+          <!-- Populated dynamically by JS -->
+        </div>
+
+        <!-- Active Day Detailed Card -->
+        <div id="day-detail-card">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- Week at a Glance Mode -->
+      <div id="itinerary-overview-container" class="hidden space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="overview-cards-grid">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 2: FLIGHTS & TRANSFERS                                           -->
+    <!-- ===================================================================== -->
+    <section id="view-flights" class="tab-panel hidden space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h2 class="font-serif text-2xl sm:text-3xl font-bold text-aegean-dark">Flights &amp; Airport Transfers</h2>
+          <p class="text-xs sm:text-sm text-stone-500 mt-1">All times are local to Crete. Filter by traveler or airport to check pickups and drop-offs.</p>
+        </div>
+      </div>
+
+      <!-- Filter Controls Card -->
+      <div class="bg-white rounded-2xl border border-stone-200/80 p-4 sm:p-5 shadow-sm space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Person Filter -->
+          <div>
+            <label for="filter-traveler" class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">
+              Find Traveler
+            </label>
+            <select
+              id="filter-traveler"
+              onchange="renderFlights()"
+              class="w-full rounded-xl border border-stone-300 bg-limestone px-3.5 py-2.5 text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-aegean"
+            >
+              <option value="ALL">All 14 Guests</option>
+              <!-- Populated dynamically -->
+            </select>
+          </div>
+
+          <!-- Airport Filter -->
+          <div>
+            <label for="filter-airport" class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">
+              Airport
+            </label>
+            <select
+              id="filter-airport"
+              onchange="renderFlights()"
+              class="w-full rounded-xl border border-stone-300 bg-limestone px-3.5 py-2.5 text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-aegean"
+            >
+              <option value="ALL">Both Airports (CHQ &amp; HER)</option>
+              <option value="CHQ">Chania (CHQ) — ~1 hr from Pigi</option>
+              <option value="HER">Heraklion (HER) — ~1 hr 10 min from Pigi</option>
+            </select>
+          </div>
+
+          <!-- Direction Filter -->
+          <div>
+            <label for="filter-direction" class="block text-xs font-semibold uppercase tracking-wider text-stone-500 mb-1.5">
+              Flight Type
+            </label>
+            <select
+              id="filter-direction"
+              onchange="renderFlights()"
+              class="w-full rounded-xl border border-stone-300 bg-limestone px-3.5 py-2.5 text-sm font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-aegean"
+            >
+              <option value="ALL">Arrivals &amp; Departures</option>
+              <option value="Arrival">Arrivals Only</option>
+              <option value="Departure">Departures Only</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quick Logistics Banner -->
+        <div class="bg-sand/70 rounded-xl p-3.5 text-xs sm:text-sm text-stone-700 flex items-start gap-2.5">
+          <span class="text-base leading-none mt-0.5">🚗</span>
+          <p>
+            <strong>Transfer Reminders:</strong> Agree drivers, seats, luggage allocation, and rental return airports in advance.
+            Tuesday night (11:25 pm CHQ) needs a dedicated pickup for Favour &amp; Michael. Saturday's later-flight group needs a post-checkout luggage &amp; daytime plan.
+          </p>
+        </div>
+      </div>
+
+      <!-- Rendered Flight Cards -->
+      <div id="flights-list" class="space-y-6">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 3: INTERACTIVE ISLAND MAP                                        -->
+    <!-- ===================================================================== -->
+    <section id="view-map" class="tab-panel hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h2 class="font-serif text-2xl sm:text-3xl font-bold text-aegean-dark">Crete Locations Map</h2>
+          <p class="text-xs sm:text-sm text-stone-500 mt-1">Explore our Pigi villa base, both airports, scenic routes, dining, and optional day trips.</p>
+        </div>
+      </div>
+
+      <!-- Map Category Filters -->
+      <div id="map-filter-pills" class="flex flex-wrap gap-2">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Map Container -->
+      <div class="bg-white rounded-2xl border border-stone-200/80 shadow-sm overflow-hidden">
+        <div id="crete-map" class="w-full h-[380px] sm:h-[480px] bg-sky-50 relative">
+          <!-- Leaflet renders here; fallback text if Leaflet fails to load -->
+          <div id="map-fallback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-stone-600">
+            <p class="font-semibold text-base mb-2">Interactive map tiles are currently unavailable offline.</p>
+            <p class="text-sm mb-4">You can still tap any location below to open it directly in Google Maps.</p>
+          </div>
+        </div>
+
+        <!-- Legend Bar -->
+        <div class="px-4 py-3 bg-sand/50 border-t border-stone-200/70 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-medium text-stone-600">
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#C26745] inline-block"></span>Villa Base</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#1B4965] inline-block"></span>Airports</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#4E6B50] inline-block"></span>Main Stops</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#B45309] inline-block"></span>Dining</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-[#6D597A] inline-block"></span>Optional / Weather Backup</span>
+        </div>
+      </div>
+
+      <!-- Tap-to-Focus Location Directory -->
+      <div id="map-locations-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- Populated dynamically -->
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 4: TASKS, TBCs & COST ESTIMATOR                                  -->
+    <!-- ===================================================================== -->
+    <section id="view-planning" class="tab-panel hidden space-y-8">
+
+      <!-- Official Google Sheet Banner -->
+      <div class="bg-gradient-to-r from-olive to-aegean rounded-2xl p-5 sm:p-6 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="inline-flex items-center gap-1.5 text-xs uppercase tracking-wider font-semibold text-emerald-200">
+            <span>Shared Source of Truth</span>
+          </div>
+          <h2 class="font-serif text-xl sm:text-2xl font-bold">Live Planning Tracker</h2>
+          <p class="text-xs sm:text-sm text-white/85 max-w-xl">
+            Update official tasks, owners, and progress in the shared Google Sheet. Ticking "Done" in the sheet applies automatic strikethrough.
+          </p>
+        </div>
+        <a
+          href="https://docs.google.com/spreadsheets/d/1luNSuunYf-wndDNgNeLcIEW4yImsfbshw3T9Q8QGH18"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center justify-center gap-2 bg-white text-aegean-dark hover:bg-sand transition font-semibold text-sm px-5 py-3 rounded-xl shadow-sm shrink-0"
+        >
+          <span>Open Google Sheet</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
+      </div>
+
+      <!-- Two-Column Grid: Open TBC Checklist & Activity Cost Estimator -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Open Action Items / TBCs from Itinerary -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-sm space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="font-serif text-xl font-bold text-aegean-dark">Open Bookings &amp; TBCs</h3>
+              <p class="text-xs text-stone-500 mt-0.5">Personal check-offs are saved on your device. Filter by owner below.</p>
+            </div>
+            <span id="checklist-progress" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-olive-light text-olive self-start sm:self-auto">
+              0 / 0 checked
+            </span>
+          </div>
+
+          <!-- Owner Filter Pills -->
+          <div id="owner-filter-pills" class="flex flex-wrap gap-1.5">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Checklist Items -->
+          <ul id="tbc-checklist" class="divide-y divide-stone-100">
+            <!-- Populated dynamically -->
+          </ul>
+        </div>
+
+        <!-- Per-Person Activity Cost Estimator -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-sm space-y-5">
+          <div>
+            <h3 class="font-serif text-xl font-bold text-aegean-dark">Quoted Activity Estimator</h3>
+            <p class="text-xs text-stone-500 mt-1">Toggle the quoted activities you plan to join to estimate your per-person share in Euros.</p>
+          </div>
+
+          <div class="space-y-3" id="cost-items-list">
+            <!-- Populated dynamically -->
+          </div>
+
+          <!-- Estimated Total Box -->
+          <div class="bg-sand/70 rounded-xl p-4 flex items-center justify-between border border-stone-200/70">
+            <div>
+              <p class="text-xs uppercase tracking-wider font-semibold text-stone-500">Quoted Subtotal / Person</p>
+              <p class="text-[11px] text-stone-500 mt-0.5">Excludes TBC items (chef, dinners, cars, groceries)</p>
+            </div>
+            <div class="text-right">
+              <p id="cost-total-eur" class="font-serif text-2xl font-bold text-aegean-dark">€151.43</p>
+              <p id="cost-total-approx" class="text-[11px] text-stone-500">based on 14 guests for boat</p>
+            </div>
+          </div>
+
+          <!-- Additional TBC Cost Notes -->
+          <div class="space-y-2 pt-2 border-t border-stone-100">
+            <p class="text-xs font-semibold uppercase tracking-wider text-stone-500">Other Shared Costs (TBC)</p>
+            <ul class="text-xs text-stone-600 space-y-1.5">
+              <li class="flex items-start gap-2">
+                <span class="text-terracotta font-bold">•</span>
+                <span><strong>Prima Plora Dinner (Wed 5 pm):</strong> Reserved for 14 guests; menu &amp; split on the day.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-terracotta font-bold">•</span>
+                <span><strong>Thanksgiving Private Chef (Thu):</strong> Spit-roasted feast; chef booking, menu &amp; price TBC.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-terracotta font-bold">•</span>
+                <span><strong>Groceries, Cars &amp; Fuel:</strong> First grocery shop Monday; rental cars across CHQ/HER.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-terracotta font-bold">•</span>
+                <span><strong>Chania Group Lunch (Fri 12:45 pm):</strong> Proposed restaurant booking by Isaac.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wed Dinner Dress Code Card (Handy Reference) -->
+      <div class="bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span class="inline-block text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-terracotta-light text-terracotta mb-2">
+              Packing Reminder · Wed 25 Nov · 5:00 PM
+            </span>
+            <h3 class="font-serif text-xl font-bold text-aegean-dark">Prima Plora Dinner Dress Code</h3>
+            <p class="text-sm text-stone-600 mt-1">
+              Coordinate outfits in <strong>brown, off-white, tan, and other neutrals</strong> for our reserved 14-person dinner in Rethymno.
+            </p>
+          </div>
+          <div class="flex items-center gap-2.5 shrink-0">
+            <div class="flex flex-col items-center gap-1">
+              <span class="w-10 h-10 rounded-full shadow-inner border border-stone-200" style="background-color: #6B4423;" title="Warm Brown"></span>
+              <span class="text-[11px] font-medium text-stone-500">Brown</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <span class="w-10 h-10 rounded-full shadow-inner border border-stone-300" style="background-color: #FAF5EC;" title="Off-White"></span>
+              <span class="text-[11px] font-medium text-stone-500">Off-White</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <span class="w-10 h-10 rounded-full shadow-inner border border-stone-200" style="background-color: #D2B48C;" title="Tan"></span>
+              <span class="text-[11px] font-medium text-stone-500">Tan</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+              <span class="w-10 h-10 rounded-full shadow-inner border border-stone-200" style="background-color: #B5A99A;" title="Neutrals"></span>
+              <span class="text-[11px] font-medium text-stone-500">Neutrals</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-10 border-t border-stone-200/80 bg-sand/50 py-6 text-center text-xs text-stone-500">
+    <div class="max-w-5xl mx-auto px-4 space-y-1">
+      <p class="font-medium text-stone-700">Crete 2026 · Pigi Village, 74150, Rethymno, Greece</p>
+      <p>All itinerary times are local to Crete (EET). Keep live task updates synced in the shared Google Sheet.</p>
+    </div>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+
+  <!-- Application Data & Logic -->
+  <script>
+    /* =========================================================================
+       1. STRUCTURED TRIP DATA (100% synced with "Crete 2026" itinerary doc)
+       ========================================================================= */
+
+    const DAYS = [
+      {
+        id: 'mon',
+        shortDay: 'Mon',
+        dateNum: '23',
+        month: 'Nov',
+        fullDate: 'Monday, 23 November 2026',
+        title: 'Arrivals & Settling In',
+        subtitle: 'Airport pickups, groceries & first evening at the Pigi villa',
+        badge: 'Arrival Day',
+        badgeStyle: 'bg-sky-100 text-aegean-dark',
+        summaryActivities: 'Settle in near Pigi; early arrivals buy groceries. Villa dinner; Chania arrivals join later.',
+        summaryFood: 'Villa dinner; staggered arrivals.',
+        summaryTransport: 'Separate Chania / Heraklion transfers; cars & luggage allocation TBC.',
+        summaryFlights: 'HER: David, Daniel, Sangojinmi Parents (Sun 22), Oladipupo Parents (10:50 am). CHQ: Isaac, Joy, Peace, Blessing, Adeyemo Parents (5:55 pm).',
+        blocks: [
+          {
+            period: 'Early Arrivals (Sun 22 & Mon Morning)',
+            time: 'Sun 10:30 am · Mon 10:50 am',
+            status: 'Confirmed Flights',
+            statusColor: 'bg-olive-light text-olive',
+            title: 'Heraklion Arrivals, Cars & Grocery Shop',
+            details: [
+              'David, Daniel & Sangojinmi Parents land at Heraklion (HER) on Sunday 22 Nov at 10:30 am (the day before).',
+              'Oladipupo Parents land at Heraklion (HER) on Monday 23 Nov at 10:50 am.',
+              'Collect booked rental cars, settle into the villa near Pigi, use the agreed grocery list for the first shop, organise rooms, and prepare an easy dinner.',
+              'Note: Meal plan and snack choices need agreeing before Isaac sends the grocery list to his parents.'
+            ]
+          },
+          {
+            period: 'Evening',
+            time: '5:55 pm landing',
+            status: 'Staggered Arrival',
+            statusColor: 'bg-amber-100 text-amber-900',
+            title: 'Chania Group Lands & Villa Dinner',
+            details: [
+              'Isaac, Joy, Peace, Blessing & Adeyemo Parents land at Chania (CHQ) at 5:55 pm.',
+              'Allow time for luggage, car collection, and the drive to Pigi before dinner; keep warm food available for later arrivals.',
+              'Optional short local walk around Pigi once settled.'
+            ]
+          }
+        ],
+        food: 'Easy villa dinner accommodating staggered arrivals. First grocery shop handled by early arrivals.',
+        transport: 'Separate Chania (CHQ) and Heraklion (HER) transfers. Final car assignments & luggage allocation TBC.',
+        dayFlights: [
+          { time: 'Sun 10:30 am', airport: 'HER', type: 'Arrival', people: 'David, Daniel, Sangojinmi Parents' },
+          { time: 'Mon 10:50 am', airport: 'HER', type: 'Arrival', people: 'Oladipupo Parents' },
+          { time: 'Mon 5:55 pm', airport: 'CHQ', type: 'Arrival', people: 'Isaac, Joy, Peace, Blessing, Adeyemo Parents' }
+        ]
+      },
+      {
+        id: 'tue',
+        shortDay: 'Tue',
+        dateNum: '24',
+        month: 'Nov',
+        fullDate: 'Tuesday, 24 November 2026',
+        title: 'South Crete Scenic Day',
+        subtitle: 'Spili, Kourtaliotiko Gorge, Preveli & Plakias scenic loop',
+        badge: 'Scenic Road Trip',
+        badgeStyle: 'bg-olive-light text-olive',
+        summaryActivities: 'Morning: Spili & Kourtaliotiko Gorge. Afternoon: Preveli Monastery (optional beach walk). Weather backup: Lake Kournas & Argiroupoli.',
+        summaryFood: 'Villa breakfast & dinner. Late lunch in Plakias.',
+        summaryTransport: 'Scenic loop south of Rethymno; separate late-night Chania pickup needed.',
+        summaryFlights: '11:25 pm • CHQ: Favour & Michael arrive (villa arrival likely after midnight).',
+        hasPlanToggle: true,
+        toggleLabels: ['Main Scenic Loop', 'Weather Backup'],
+        blocks: [
+          {
+            period: 'Morning',
+            time: '~9:00 am departure',
+            status: 'Weather Dependent',
+            statusColor: 'bg-sky-100 text-aegean-dark',
+            title: 'Spili Village & Kourtaliotiko Gorge',
+            details: [
+              'Aim to leave the villa around 9:00 am, subject to weather and group readiness.',
+              'Stop in Spili for coffee, strolling the village, and seeing the famous lion-head fountain.',
+              'Continue to Kourtaliotiko Gorge viewpoints. Confirm local access on the day; do not assume the waterfall trail is open.'
+            ]
+          },
+          {
+            period: 'Afternoon',
+            time: 'Midday – Late Afternoon',
+            status: 'Optional Hike',
+            statusColor: 'bg-amber-100 text-amber-900',
+            title: 'Preveli Monastery, Optional Palm Beach & Plakias Lunch',
+            details: [
+              'Visit Preveli Monastery if winter opening hours are confirmed.',
+              'Preveli Beach / palm forest walk is optional: note that the descent and climb back up are steep. Keep it a scenic walk and allow plenty of daylight.',
+              'Continue to coastal Plakias for a late lunch, then drive back to the villa for dinner.'
+            ]
+          },
+          {
+            period: 'Late Night',
+            time: '11:25 pm landing',
+            status: 'Dedicated Pickup Needed',
+            statusColor: 'bg-terracotta-light text-terracotta',
+            title: 'Favour & Michael Arrive at Chania (CHQ)',
+            details: [
+              'Favour & Michael land in Chania at 11:25 pm and will likely reach the villa after midnight.',
+              'Arrange a dedicated pickup/transfer and late check-in access — avoid relying on the entire sightseeing group to wait at the airport.'
+            ]
+          }
+        ],
+        altBlocks: [
+          {
+            period: 'Weather Backup Plan',
+            time: 'Flexible Morning Start',
+            status: 'Rain / Wind Backup',
+            statusColor: 'bg-purple-100 text-purple-900',
+            title: 'Lake Kournas & Argiroupoli Springs',
+            details: [
+              'If south coast weather or gorge conditions are poor, swap the loop for closer northwest highlights: Lake Kournas (Crete’s only natural freshwater lake) and Argiroupoli village.',
+              'Check weather conditions and winter opening hours of stops and restaurants before setting off.'
+            ]
+          },
+          {
+            period: 'Evening & Late Night',
+            time: 'Evening · 11:25 pm landing',
+            status: 'Fixed',
+            statusColor: 'bg-terracotta-light text-terracotta',
+            title: 'Villa Dinner & Late-Night Chania Pickup',
+            details: [
+              'Return to the villa for dinner.',
+              'Dedicated pickup/transfer for Favour & Michael landing at Chania (CHQ) at 11:25 pm (villa arrival after midnight).'
+            ]
+          }
+        ],
+        food: 'Villa breakfast & dinner. Late lunch in Plakias (or near Lake Kournas / Argiroupoli if using weather backup).',
+        transport: 'Scenic loop south of Rethymno. Separate dedicated late-night Chania airport transfer required for Favour & Michael.',
+        dayFlights: [
+          { time: '11:25 pm', airport: 'CHQ', type: 'Arrival', people: 'Favour, Michael (villa arrival after midnight)' }
+        ]
+      },
+      {
+        id: 'wed',
+        shortDay: 'Wed',
+        dateNum: '25',
+        month: 'Nov',
+        fullDate: 'Wednesday, 25 November 2026',
+        title: 'Oliving in Crete & Nice Dinner',
+        subtitle: 'Local olive grove tasting in Pigi & reserved dinner at Prima Plora',
+        badge: 'Dress-Up Dinner',
+        badgeStyle: 'bg-terracotta-light text-terracotta',
+        summaryActivities: 'Morning–lunch: Pigi olive oil experience (3 hr, €80/person, TBD). Afternoon: Villa & change. 5 pm: Prima Plora (14; reserved).',
+        summaryFood: 'Villa breakfast. Tour includes meze & 4-course pairing. 5 pm: Prima Plora, Rethymno (Joy booked).',
+        summaryTransport: 'Local Pigi trip (meet outside Valide, 1 km to grove). Villa before driving to Rethymno.',
+        summaryFlights: 'No flights scheduled.',
+        showDressCode: true,
+        blocks: [
+          {
+            period: 'Morning – Lunch',
+            time: 'Proposed 10:00 am – 1:00 pm',
+            status: 'Booking & Time TBD',
+            statusColor: 'bg-amber-100 text-amber-900',
+            title: 'Oliving in Crete — Pigi Olive Grove Experience (€80/person)',
+            details: [
+              'Three-hour olive grove experience and olive oil tasting right in Pigi (our villa’s village), including a welcoming meze and four-course food pairing.',
+              'Meet outside Valide, then drive ~1 km to the olive grove. Confirm the meeting pin and exact route from the villa.',
+              'Isaac & David still need to book and confirm final attendees, November availability, start time, dietary needs, and outdoor weather/cancellation backup.'
+            ]
+          },
+          {
+            period: 'Afternoon',
+            time: '1:00 pm – 4:30 pm',
+            status: 'Downtime',
+            statusColor: 'bg-stone-100 text-stone-700',
+            title: 'Rest & Get Ready at the Villa',
+            details: [
+              'Return to the villa after the tasting to relax and change. No Chania or Heraklion sightseeing added.',
+              'Leave enough buffer time to drive to Rethymno, find parking, and arrive before 5:00 pm.'
+            ]
+          },
+          {
+            period: 'Evening',
+            time: '5:00 pm (Fixed)',
+            status: 'Reserved · 14 Guests',
+            statusColor: 'bg-olive-light text-olive',
+            title: 'Prima Plora Organic Restaurant, Rethymno',
+            details: [
+              'Joy has reserved dinner for 14 people at Prima Plora in Rethymno.',
+              'Outfit Colours: Brown, off-white, tan, and other neutrals.',
+              'Reconfirm final headcount and dietary requirements with the restaurant nearer the date.'
+            ]
+          }
+        ],
+        food: 'Villa breakfast. Oliving in Crete includes welcoming meze & 4-course food pairing (confirm portions for lunch). 5:00 pm dinner at Prima Plora (reserved by Joy).',
+        transport: 'Local Pigi outing (1 km from Valide meeting point). Return to villa, then drive & park in Rethymno before 5:00 pm.',
+        dayFlights: []
+      },
+      {
+        id: 'thu',
+        shortDay: 'Thu',
+        dateNum: '26',
+        month: 'Nov',
+        fullDate: 'Thursday, 26 November 2026',
+        title: 'Chill House Day & Thanksgiving',
+        subtitle: 'Sleep in, heated pool downtime, optional pottery & spit-roasted feast',
+        badge: 'Thanksgiving 🦃',
+        badgeStyle: 'bg-amber-100 text-amber-900',
+        summaryActivities: 'Sleep in, pool & downtime (heating TBC). Optional: Arkadi Monastery or Margarites pottery. Evening: Thanksgiving feast & games.',
+        summaryFood: 'Villa breakfast & lunch. Private chef spit-roasted Thanksgiving feast planned (TBC).',
+        summaryTransport: 'Villa day; cars available for optional local outings.',
+        summaryFlights: 'No flights scheduled.',
+        blocks: [
+          {
+            period: 'Morning & Afternoon',
+            time: 'Relaxed Pace',
+            status: 'Pool Heating TBC',
+            statusColor: 'bg-amber-100 text-amber-900',
+            title: 'Sleep In, Heated Pool & Optional Local Outings',
+            details: [
+              'Unstructured family downtime at the villa. Blessing to request pool heating ASAP and confirm when heating starts so it’s warm in time.',
+              'Optional outings for anyone wanting to explore: Arkadi Monastery, a pottery workshop in Margarites, or browsing Margarites ceramic shops.',
+              'Check opening hours/availability and agree on a return time around the chef’s setup.'
+            ]
+          },
+          {
+            period: 'Evening',
+            time: 'Dinner Time TBC',
+            status: 'Chef Booking TBC',
+            statusColor: 'bg-terracotta-light text-terracotta',
+            title: 'Private Chef Thanksgiving Feast & Group Games',
+            details: [
+              'Planned private-chef Thanksgiving dinner at the villa featuring a large spit-roasted / rotisserie meat centrepiece, followed by board games, cards, and group games.',
+              'Isaac still needs to book the chef (planned service, not yet confirmed). Meat choice, sides, dietary needs, price, equipment, and dinner time TBC.',
+              'Logistics: Confirm chef provides spit/rotisserie, fuel, setup & cleanup, plus host permission for outdoor cooking (David following up on host reply).'
+            ]
+          }
+        ],
+        food: 'Villa breakfast & lunch. Planned chef-prepared spit-roasted Thanksgiving feast for dinner (booking & menu TBC).',
+        transport: 'Mostly villa-based; rental cars available for optional short drives to Arkadi Monastery or Margarites.',
+        dayFlights: []
+      },
+      {
+        id: 'fri',
+        shortDay: 'Fri',
+        dateNum: '27',
+        month: 'Nov',
+        fullDate: 'Friday, 27 November 2026',
+        title: 'Chania Old Town & Optional Boat',
+        subtitle: 'Harbour morning, SEAze the Day boat option & Adeyemo Parents departure',
+        badge: 'Fixed Return 4 PM',
+        badgeStyle: 'bg-sky-100 text-aegean-dark',
+        summaryActivities: 'Old Town definite (~8:15–9:15 am & 1:45–2:15 pm). Tentative Boat: 10 am–12:30 pm (€72/guest, 2 boats). Back at villa by 4 pm latest.',
+        summaryFood: 'Villa breakfast; proposed Chania group lunch 12:45–1:45 pm (Isaac to book); villa dinner for remaining.',
+        summaryTransport: 'Leave villa ~7 am; leave Chania by 2:30 pm (villa ~3:45 pm, 4 pm latest). Adeyemo Parents leave villa 5 pm for CHQ.',
+        summaryFlights: '8:15 pm • CHQ Departure: Adeyemo Parents.',
+        hasPlanToggle: true,
+        toggleLabels: ['With Boat Tour', 'If No Boat (Backup)'],
+        blocks: [
+          {
+            period: 'Early Departure & Old Town',
+            time: '7:00 am villa dep · 8:15–9:15 am',
+            status: 'Definite',
+            statusColor: 'bg-olive-light text-olive',
+            title: 'Drive to Chania & Morning Old Town Walk',
+            details: [
+              'Leave the villa around 7:00 am to allow for the drive, parking, and walking into Chania Old Town.',
+              'Explore the Venetian Harbour and Old Town streets ~8:15–9:15 am (fit Splantzia or lighthouse only as time allows).'
+            ]
+          },
+          {
+            period: 'Mid-Morning',
+            time: '9:30 am check-in · 10:00 am–12:30 pm',
+            status: 'Tentative / Weather TBC',
+            statusColor: 'bg-amber-100 text-amber-900',
+            title: 'SEAze the Day Boat Tour (Option 1)',
+            details: [
+              'Requested for 10:00 am–12:30 pm pending operator confirmation and November sea/weather conditions.',
+              'Quote: €1,000 total for 14 guests across 2 boats travelling together (~€71.43 / ~€72 per guest if split equally).',
+              'Confirm exact meeting point, total charges, payment, and weather cancellation/refund terms before booking.'
+            ]
+          },
+          {
+            period: 'Lunch & Afternoon Window',
+            time: '12:45–2:15 pm · 2:30 pm departure',
+            status: 'Fixed 2:30 pm Leave',
+            statusColor: 'bg-terracotta-light text-terracotta',
+            title: 'Chania Group Lunch & Quick Shops/Cafés',
+            details: [
+              'Proposed group lunch 12:45–1:45 pm close to the boat return point. Isaac to book, confirm headcount/dietary needs, and flag the 1-hour window.',
+              'Extra Old Town / cafés / shopping window from ~1:45–2:15 pm, then walk back to cars and leave Chania strictly by 2:30 pm.'
+            ]
+          },
+          {
+            period: 'Return & Evening',
+            time: '3:45–4:00 pm villa · 5:00 pm CHQ run',
+            status: 'Strict Buffer',
+            statusColor: 'bg-sky-100 text-aegean-dark',
+            title: 'Villa Return, Adeyemo Parents Flight & Dinner',
+            details: [
+              'Everyone back at the villa by 4:00 pm latest (targeting ~3:45 pm arrival from Chania).',
+              'Adeyemo Parents collect luggage and depart villa at 5:00 pm for their 8:15 pm Chania (CHQ) flight (replaces earlier direct-from-Chania plan). Confirm airport driver.',
+              'Dinner at the villa for those remaining. Young adults choosing to stay out in Chania must arrange their own agreed driver/transport.'
+            ]
+          }
+        ],
+        altBlocks: [
+          {
+            period: 'Morning – Early Afternoon (No Boat)',
+            time: '7:00 am villa dep · Relaxed Chania',
+            status: 'Backup Plan',
+            statusColor: 'bg-purple-100 text-purple-900',
+            title: 'Expanded Old Town + Optional Museum, Pottery, or Akrotiri',
+            details: [
+              'Chania Old Town remains a definite part of Friday even if the boat does not run.',
+              'Use the 9:30 am–12:30 pm boat slot for more relaxed Old Town exploration plus one optional stop: museum visit, pottery workshop, or Akrotiri outing (subject to interest, winter hours, booking & travel time).',
+              'Group lunch in Chania Old Town (~12:45–1:45 pm; Isaac to book).'
+            ]
+          },
+          {
+            period: 'Fixed Return & Airport Departure',
+            time: '2:30 pm leave · 4:00 pm villa · 5:00 pm CHQ',
+            status: 'Fixed Deadlines',
+            statusColor: 'bg-terracotta-light text-terracotta',
+            title: 'Return to Pigi & Adeyemo Parents Departure',
+            details: [
+              'Keep the 2:30 pm Chania departure and 4:00 pm latest villa return fixed regardless of boat status.',
+              'Adeyemo Parents leave the villa at 5:00 pm for their 8:15 pm Chania flight. Villa dinner for everyone else.'
+            ]
+          }
+        ],
+        food: 'Villa breakfast; Chania group lunch proposed 12:45–1:45 pm (Isaac to book); villa dinner for remaining guests.',
+        transport: 'Leave villa ~7:00 am. Leave Chania strictly by 2:30 pm (villa ~3:45 pm, 4:00 pm latest). Adeyemo Parents depart villa at 5:00 pm for Chania Airport.',
+        dayFlights: [
+          { time: '8:15 pm', airport: 'CHQ', type: 'Departure', people: 'Adeyemo Parents (leave villa 5:00 pm)' }
+        ]
+      },
+      {
+        id: 'sat',
+        shortDay: 'Sat',
+        dateNum: '28',
+        month: 'Nov',
+        fullDate: 'Saturday, 28 November 2026',
+        title: 'Breakfast & Departures',
+        subtitle: 'Checkout & staggered transfers across Chania & Heraklion airports',
+        badge: 'Departure Day',
+        badgeStyle: 'bg-stone-200 text-stone-800',
+        summaryActivities: 'Breakfast, pack & checkout (time TBD). Four staggered flight groups across CHQ & HER.',
+        summaryFood: 'Villa breakfast; later meals independently around flights.',
+        summaryTransport: 'Separate CHQ / HER groups; confirm drivers, post-checkout luggage storage & rental returns.',
+        summaryFlights: 'CHQ: Peace & Joy (11:20 am), Blessing (3:10 pm), Isaac/Favour/Michael (7:15 pm). HER: David, Daniel, Sangojinmi & Oladipupo Parents (3:00 pm).',
+        blocks: [
+          {
+            period: 'Early Morning',
+            time: '~7:30–8:00 am villa departure',
+            status: 'Early Start',
+            statusColor: 'bg-terracotta-light text-terracotta',
+            title: 'Peace & Joy Depart for Chania (11:20 am Flight)',
+            details: [
+              'Peace & Joy fly from Chania (CHQ) at 11:20 am.',
+              'Plan an early villa departure around 7:30–8:00 am, then refine for exact route, airline check-in, and rental car return.'
+            ]
+          },
+          {
+            period: 'Morning Checkout',
+            time: 'Checkout Time TBD',
+            status: 'Confirm with Host',
+            statusColor: 'bg-amber-100 text-amber-900',
+            title: 'Villa Breakfast, Pack & Checkout',
+            details: [
+              'Final villa breakfast and packing; confirm official checkout time with the host.',
+              'Do not assume access to the villa continues after checkout for the evening flight group — confirm where luggage can be stored and how to spend the day.'
+            ]
+          },
+          {
+            period: 'Mid-Afternoon Flights',
+            time: '3:00 pm (HER) · 3:10 pm (CHQ)',
+            status: 'Two Separate Airports',
+            statusColor: 'bg-sky-100 text-aegean-dark',
+            title: 'Heraklion & Chania Afternoon Departures',
+            details: [
+              '3:00 pm Heraklion (HER): David, Daniel, Sangojinmi Parents & Oladipupo Parents.',
+              '3:10 pm Chania (CHQ): Blessing.',
+              'Both groups require separate transport plans and confirmed rental car return locations.'
+            ]
+          },
+          {
+            period: 'Evening Flight',
+            time: '7:15 pm (CHQ)',
+            status: 'Late Transfer',
+            statusColor: 'bg-olive-light text-olive',
+            title: 'Isaac, Favour & Michael Depart Chania',
+            details: [
+              'Final group flies from Chania (CHQ) at 7:15 pm.',
+              'Confirm daytime plan, luggage storage post-checkout, and final car drop-off.'
+            ]
+          }
+        ],
+        food: 'Villa breakfast; lunch and later meals handled independently around each group’s flight schedule.',
+        transport: 'Split across 2 airports and 4 flight times. Confirm drivers, seat counts, luggage capacity, post-checkout luggage storage, and each rental car’s return airport ahead of time.',
+        dayFlights: [
+          { time: '11:20 am', airport: 'CHQ', type: 'Departure', people: 'Peace, Joy (leave villa ~7:30–8:00 am)' },
+          { time: '3:00 pm', airport: 'HER', type: 'Departure', people: 'David, Daniel, Sangojinmi Parents, Oladipupo Parents' },
+          { time: '3:10 pm', airport: 'CHQ', type: 'Departure', people: 'Blessing' },
+          { time: '7:15 pm', airport: 'CHQ', type: 'Departure', people: 'Isaac, Favour, Michael' }
+        ]
+      }
+    ];
+
+    const ALL_FLIGHTS = [
+      {
+        dayLabel: 'Sunday, 22 November',
+        direction: 'Arrival',
+        time: '10:30 am',
+        airport: 'HER',
+        airportName: 'Heraklion Airport (HER)',
+        travelers: ['David', 'Daniel', 'Sangojinmi Parents'],
+        note: 'Arriving the day before main check-in; early setup & groceries.'
+      },
+      {
+        dayLabel: 'Monday, 23 November',
+        direction: 'Arrival',
+        time: '10:50 am',
+        airport: 'HER',
+        airportName: 'Heraklion Airport (HER)',
+        travelers: ['Oladipupo Parents'],
+        note: 'Morning arrival; join early villa settle-in & first grocery shop.'
+      },
+      {
+        dayLabel: 'Monday, 23 November',
+        direction: 'Arrival',
+        time: '5:55 pm',
+        airport: 'CHQ',
+        airportName: 'Chania Airport (CHQ)',
+        travelers: ['Isaac', 'Joy', 'Peace', 'Blessing', 'Adeyemo Parents'],
+        note: 'Allow time for luggage, car collection & drive to Pigi; villa dinner kept warm.'
+      },
+      {
+        dayLabel: 'Tuesday, 24 November',
+        direction: 'Arrival',
+        time: '11:25 pm',
+        airport: 'CHQ',
+        airportName: 'Chania Airport (CHQ)',
+        travelers: ['Favour', 'Michael'],
+        note: 'Dedicated pickup/transfer & late check-in needed; villa arrival likely after midnight.'
+      },
+      {
+        dayLabel: 'Friday, 27 November',
+        direction: 'Departure',
+        time: '8:15 pm',
+        airport: 'CHQ',
+        airportName: 'Chania Airport (CHQ)',
+        travelers: ['Adeyemo Parents'],
+        note: 'Everyone back at villa by 4:00 pm latest; depart villa at 5:00 pm for CHQ.'
+      },
+      {
+        dayLabel: 'Saturday, 28 November',
+        direction: 'Departure',
+        time: '11:20 am',
+        airport: 'CHQ',
+        airportName: 'Chania Airport (CHQ)',
+        travelers: ['Peace', 'Joy'],
+        note: 'Early start required: aim for ~7:30–8:00 am villa departure (refine for check-in & car return).'
+      },
+      {
+        dayLabel: 'Saturday, 28 November',
+        direction: 'Departure',
+        time: '3:00 pm',
+        airport: 'HER',
+        airportName: 'Heraklion Airport (HER)',
+        travelers: ['David', 'Daniel', 'Sangojinmi Parents', 'Oladipupo Parents'],
+        note: 'Separate Heraklion transfer & rental car return group.'
+      },
+      {
+        dayLabel: 'Saturday, 28 November',
+        direction: 'Departure',
+        time: '3:10 pm',
+        airport: 'CHQ',
+        airportName: 'Chania Airport (CHQ)',
+        travelers: ['Blessing'],
+        note: 'Separate afternoon Chania transfer plan.'
+      },
+      {
+        dayLabel: 'Saturday, 28 November',
+        direction: 'Departure',
+        time: '7:15 pm',
+        airport: 'CHQ',
+        airportName: 'Chania Airport (CHQ)',
+        travelers: ['Isaac', 'Favour', 'Michael'],
+        note: 'Confirm post-checkout luggage storage & daytime hangout plan before airport run.'
+      }
+    ];
+
+    const MAP_LOCATIONS = [
+      {
+        id: 'villa',
+        name: 'Family Villa (Pigi Village)',
+        category: 'villa',
+        dayTag: 'Home Base · All Days',
+        coords: [35.3578, 24.5720],
+        color: '#C26745',
+        description: 'Our home base in Pigi village (74150), just east of Rethymno. Meeting point for the local olive grove experience (~1 km from Valide).',
+        mapsUrl: 'https://maps.app.goo.gl/nRNBrYqobcNfegdF9?g_st=ic'
+      },
+      {
+        id: 'chq',
+        name: 'Chania Airport (CHQ)',
+        category: 'airport',
+        dayTag: 'Mon / Tue / Fri / Sat',
+        coords: [35.5317, 24.1497],
+        color: '#1B4965',
+        description: 'Chania International Airport (~1 hr drive from Pigi). Used by Isaac, Joy, Peace, Blessing, Adeyemo Parents, Favour & Michael.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Chania+International+Airport+Crete'
+      },
+      {
+        id: 'her',
+        name: 'Heraklion Airport (HER)',
+        category: 'airport',
+        dayTag: 'Sun / Mon / Sat',
+        coords: [35.3397, 25.1803],
+        color: '#1B4965',
+        description: 'Heraklion International Airport (~1 hr 10 min drive from Pigi). Used by David, Daniel, Sangojinmi Parents & Oladipupo Parents.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Heraklion+International+Airport+Crete'
+      },
+      {
+        id: 'spili',
+        name: 'Spili Village',
+        category: 'main',
+        dayTag: 'Tue 24 Nov · Morning',
+        coords: [35.2185, 24.5356],
+        color: '#4E6B50',
+        description: 'Morning coffee stop and village stroll famous for its lion-head Venetian fountain.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Spili+Crete+Greece'
+      },
+      {
+        id: 'gorge',
+        name: 'Kourtaliotiko Gorge',
+        category: 'main',
+        dayTag: 'Tue 24 Nov · Morning',
+        coords: [35.1924, 24.4644],
+        color: '#4E6B50',
+        description: 'Dramatic mountain gorge viewpoints along the scenic loop south of Rethymno. Confirm trail access locally.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Kourtaliotiko+Gorge+Crete'
+      },
+      {
+        id: 'preveli',
+        name: 'Preveli Monastery & Palm Beach',
+        category: 'main',
+        dayTag: 'Tue 24 Nov · Afternoon',
+        coords: [35.1575, 24.4567],
+        color: '#4E6B50',
+        description: 'Historic monastery (confirm winter hours) & optional steep descent/climb walk to Preveli Palm Beach.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Preveli+Monastery+Crete'
+      },
+      {
+        id: 'plakias',
+        name: 'Plakias',
+        category: 'dining',
+        dayTag: 'Tue 24 Nov · Late Lunch',
+        coords: [35.1904, 24.3941],
+        color: '#B45309',
+        description: 'South-coast seaside village for our late lunch before heading back north to the villa.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Plakias+Crete+Greece'
+      },
+      {
+        id: 'kournas',
+        name: 'Lake Kournas',
+        category: 'optional',
+        dayTag: 'Tue 24 Nov · Weather Backup',
+        coords: [35.3312, 24.2772],
+        color: '#6D597A',
+        description: 'Weather backup option along with Argiroupoli if south Crete conditions are unsuitable.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Lake+Kournas+Crete'
+      },
+      {
+        id: 'argiroupoli',
+        name: 'Argiroupoli',
+        category: 'optional',
+        dayTag: 'Tue 24 Nov · Weather Backup',
+        coords: [35.2861, 24.3347],
+        color: '#6D597A',
+        description: 'Lush spring village paired with Lake Kournas as our Tuesday weather backup.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Argiroupoli+Crete+Greece'
+      },
+      {
+        id: 'primaplora',
+        name: 'Prima Plora Organic Restaurant',
+        category: 'dining',
+        dayTag: 'Wed 25 Nov · 5:00 PM',
+        coords: [35.3712, 24.4622],
+        color: '#B45309',
+        description: 'Seafront Rethymno restaurant reserved by Joy for 14 guests. Dress code: brown, off-white, tan & neutrals.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Prima+Plora+Organic+Restaurant+Rethymno'
+      },
+      {
+        id: 'arkadi',
+        name: 'Arkadi Monastery',
+        category: 'optional',
+        dayTag: 'Thu 26 Nov · Optional',
+        coords: [35.3100, 24.6295],
+        color: '#6D597A',
+        description: 'Optional historic monastery outing near Pigi on Thanksgiving chill day.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Arkadi+Monastery+Crete'
+      },
+      {
+        id: 'margarites',
+        name: 'Margarites Pottery Village',
+        category: 'optional',
+        dayTag: 'Thu 26 Nov · Optional',
+        coords: [35.3398, 24.6878],
+        color: '#6D597A',
+        description: 'Optional pottery workshop and ceramic shops close to our villa on Thursday.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Margarites+Crete+Greece'
+      },
+      {
+        id: 'chania',
+        name: 'Chania Old Town & Harbour',
+        category: 'main',
+        dayTag: 'Fri 27 Nov · Definite',
+        coords: [35.5180, 24.0183],
+        color: '#4E6B50',
+        description: 'Definite morning & early-afternoon visit + tentative SEAze the Day boat tour (10:00 am–12:30 pm) & group lunch.',
+        mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Chania+Old+Venetian+Harbour+Crete'
+      }
+    ];
+
+    const TBC_TASKS = [
+      { id: 't1', owner: 'Isaac', day: 'Mon 23', text: 'Agree meal plan & snack choices, then send grocery list to parents for first shop' },
+      { id: 't2', owner: 'Group / Host', day: 'Mon 23', text: 'Confirm rental car assignments, drivers & luggage allocation across CHQ and HER' },
+      { id: 't3', owner: 'Group / Host', day: 'Tue 24', text: 'Arrange dedicated late-night Chania pickup & late check-in for Favour & Michael (11:25 pm)' },
+      { id: 't4', owner: 'Isaac & David', day: 'Wed 25', text: 'Book Oliving in Crete (Pigi): confirm headcount, 10 am–1 pm slot, dietary needs, Valide pin & weather backup' },
+      { id: 't5', owner: 'Joy', day: 'Wed 25', text: 'Reconfirm 14-person headcount & dietary needs with Prima Plora nearer the date' },
+      { id: 't6', owner: 'Blessing', day: 'Thu 26', text: 'Request villa pool heating ASAP & confirm start date so it is warm by Thursday' },
+      { id: 't7', owner: 'Isaac', day: 'Thu 26', text: 'Book private Thanksgiving chef: confirm spit-roasted meat choice, sides, price, equipment & dinner time' },
+      { id: 't8', owner: 'David', day: 'Thu 26', text: 'Capture host reply on available villa cooking equipment & outdoor cooking permission' },
+      { id: 't9', owner: 'Group / Host', day: 'Fri 27', text: 'Confirm SEAze the Day boat tour (10 am–12:30 pm, 2 boats, €1,000), meeting point & weather refund policy' },
+      { id: 't10', owner: 'Isaac', day: 'Fri 27', text: 'Book Chania Old Town group lunch (12:45–1:45 pm) near boat return & flag 1-hour window' },
+      { id: 't11', owner: 'Group / Host', day: 'Fri 27', text: 'Confirm airport driver & 5:00 pm villa departure for Adeyemo Parents (8:15 pm CHQ flight)' },
+      { id: 't12', owner: 'Group / Host', day: 'Sat 28', text: 'Confirm host checkout time, Saturday airport drivers, rental returns & luggage storage for 7:15 pm CHQ group' }
+    ];
+
+    const COST_ITEMS = [
+      {
+        id: 'olive',
+        name: 'Oliving in Crete (Wed 25 Nov)',
+        detail: '3-hr Pigi olive grove tour, welcoming meze & 4-course food pairing',
+        price: 80.00,
+        status: 'Booking TBD',
+        defaultChecked: true
+      },
+      {
+        id: 'boat',
+        name: 'SEAze the Day Boat Tour (Fri 27 Nov)',
+        detail: '10:00 am–12:30 pm · €1,000 total across 2 boats split by 14 guests',
+        price: 71.43,
+        status: 'Tentative / Weather TBC',
+        defaultChecked: true
+      }
+    ];
+
+    /* =========================================================================
+       2. STATE MANAGEMENT
+       ========================================================================= */
+    let activeTab = 'itinerary';
+    let activeDayId = 'mon';
+    let itineraryMode = 'daily';
+    let dayToggleState = { tue: 0, fri: 0 }; // 0 = primary plan, 1 = backup plan
+    let activeOwnerFilter = 'All';
+    let activeMapFilter = 'all';
+    let checkedTasks = {};
+    let selectedCosts = { olive: true, boat: true };
+
+    // Leaflet references
+    let mapInstance = null;
+    let mapMarkers = {};
+
+    // Safely load saved local checklist state
+    try {
+      const saved = localStorage.getItem('crete2026_checked_tasks');
+      if (saved) checkedTasks = JSON.parse(saved);
+    } catch (e) {
+      checkedTasks = {};
+    }
+
+    /* =========================================================================
+       3. LIVE CRETE CLOCK & TRIP COUNTDOWN
+       ========================================================================= */
+    function updateClockAndCountdown() {
+      const now = new Date();
+
+      // Display current time in Europe/Athens (Crete local time)
+      try {
+        const creteTimeStr = new Intl.DateTimeFormat('en-GB', {
+          timeZone: 'Europe/Athens',
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }).format(now);
+        document.getElementById('crete-clock').textContent = creteTimeStr;
+      } catch (e) {
+        document.getElementById('crete-clock').textContent = 'UTC+2';
+      }
+
+      // Countdown to main villa check-in: Mon 23 Nov 2026, 00:00 EET (+02:00)
+      const tripStart = new Date('2026-11-23T00:00:00+02:00');
+      const tripEnd = new Date('2026-11-28T23:59:59+02:00');
+      const labelEl = document.getElementById('countdown-label');
+      const valueEl = document.getElementById('countdown-value');
+
+      if (now < tripStart) {
+        const diffMs = tripStart - now;
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
+        const mins = Math.floor((diffMs / (1000 * 60)) % 60);
+        labelEl.textContent = 'Countdown to Mon 23 Nov';
+        valueEl.textContent = `${days}d ${hours}h ${mins}m`;
+      } else if (now >= tripStart && now <= tripEnd) {
+        const dayIndex = Math.floor((now - tripStart) / (1000 * 60 * 60 * 24)) + 1;
+        labelEl.textContent = 'Trip In Progress';
+        valueEl.textContent = `Day ${Math.min(dayIndex, 6)} of 6 in Crete`;
+      } else {
+        labelEl.textContent = 'Crete 2026 Archive';
+        valueEl.textContent = 'Trip Complete';
+      }
+    }
+
+    /* =========================================================================
+       4. TAB NAVIGATION
+       ========================================================================= */
+    function switchTab(tabName) {
+      activeTab = tabName;
+
+      // Update panel visibility
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.add('hidden');
+      });
+      const targetPanel = document.getElementById(`view-${tabName}`);
+      if (targetPanel) targetPanel.classList.remove('hidden');
+
+      // Update button active styling
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-aegean', 'text-white', 'shadow-sm');
+        btn.classList.add('text-stone-600', 'hover:bg-sand');
+        btn.setAttribute('aria-selected', 'false');
+      });
+      const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-stone-600', 'hover:bg-sand');
+        activeBtn.classList.add('bg-aegean', 'text-white', 'shadow-sm');
+        activeBtn.setAttribute('aria-selected', 'true');
+      }
+
+      // Initialize or refresh Leaflet map size when Map tab becomes visible
+      if (tabName === 'map') {
+        initMapIfNeeded();
+        if (mapInstance) {
+          setTimeout(() => {
+            mapInstance.invalidateSize();
+          }, 120);
+        }
+      }
+    }
+
+    /* =========================================================================
+       5. RENDER ITINERARY (DAILY DETAIL + WEEK OVERVIEW)
+       ========================================================================= */
+    function setItineraryMode(mode) {
+      itineraryMode = mode;
+      const dailyBtn = document.getElementById('btn-mode-daily');
+      const overviewBtn = document.getElementById('btn-mode-overview');
+      const dailyContainer = document.getElementById('itinerary-daily-container');
+      const overviewContainer = document.getElementById('itinerary-overview-container');
+
+      if (mode === 'daily') {
+        dailyBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer bg-white text-aegean-dark shadow-sm';
+        overviewBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer text-stone-600 hover:text-stone-900';
+        dailyContainer.classList.remove('hidden');
+        overviewContainer.classList.add('hidden');
+      } else {
+        overviewBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer bg-white text-aegean-dark shadow-sm';
+        dailyBtn.className = 'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition cursor-pointer text-stone-600 hover:text-stone-900';
+        overviewContainer.classList.remove('hidden');
+        dailyContainer.classList.add('hidden');
+      }
+    }
+
+    function selectDay(dayId) {
+      activeDayId = dayId;
+      renderDayPills();
+      renderDayDetail();
+    }
+
+    function setDayPlanToggle(dayId, val) {
+      dayToggleState[dayId] = val;
+      renderDayDetail();
+    }
+
+    function renderDayPills() {
+      const container = document.getElementById('day-pills');
+      container.innerHTML = DAYS.map(day => {
+        const isActive = day.id === activeDayId;
+        return `
+          <button
+            type="button"
+            onclick="selectDay('${day.id}')"
+            class="flex flex-col items-center justify-center min-w-[76px] sm:min-w-[92px] px-3 py-2.5 rounded-2xl border transition cursor-pointer shrink-0 ${
+              isActive
+                ? 'bg-aegean text-white border-aegean shadow-md scale-[1.01]'
+                : 'bg-white text-stone-700 border-stone-200 hover:border-aegean/40 hover:bg-sand/50'
+            }"
+          >
+            <span class="text-[11px] uppercase tracking-wider font-semibold ${isActive ? 'text-sky-200' : 'text-stone-400'}">
+              ${day.shortDay}
+            </span>
+            <span class="font-serif text-xl font-bold leading-tight mt-0.5">
+              ${day.dateNum}
+            </span>
+            <span class="text-[10px] font-medium ${isActive ? 'text-sky-100' : 'text-stone-400'}">
+              ${day.month}
+            </span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function renderDayDetail() {
+      const day = DAYS.find(d => d.id === activeDayId);
+      if (!day) return;
+
+      const useAlt = day.hasPlanToggle && dayToggleState[day.id] === 1;
+      const blocksToRender = useAlt ? day.altBlocks : day.blocks;
+
+      // Optional Plan Toggle UI (Tuesday Weather Backup / Friday No-Boat Backup)
+      const planToggleHtml = day.hasPlanToggle ? `
+        <div class="inline-flex bg-sand p-1 rounded-xl mt-3 sm:mt-0">
+          <button
+            type="button"
+            onclick="setDayPlanToggle('${day.id}', 0)"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              !useAlt ? 'bg-white text-aegean-dark shadow-sm' : 'text-stone-600 hover:text-stone-900'
+            }"
+          >
+            ${day.toggleLabels[0]}
+          </button>
+          <button
+            type="button"
+            onclick="setDayPlanToggle('${day.id}', 1)"
+            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+              useAlt ? 'bg-white text-purple-900 shadow-sm' : 'text-stone-600 hover:text-stone-900'
+            }"
+          >
+            ${day.toggleLabels[1]}
+          </button>
+        </div>
+      ` : '';
+
+      // Optional Dress Code Swatches for Wed 25 Nov
+      const dressCodeHtml = day.showDressCode ? `
+        <div class="bg-terracotta-light/70 border border-terracotta/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-wider text-terracotta">Evening Dress Code · 5:00 PM Prima Plora</p>
+            <p class="text-sm text-stone-700 mt-0.5">Warm neutrals palette: <strong>Brown, Off-White, Tan &amp; Neutrals</strong>.</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="w-8 h-8 rounded-full border border-stone-300 shadow-inner" style="background:#6B4423" title="Brown"></span>
+            <span class="w-8 h-8 rounded-full border border-stone-300 shadow-inner" style="background:#FAF5EC" title="Off-White"></span>
+            <span class="w-8 h-8 rounded-full border border-stone-300 shadow-inner" style="background:#D2B48C" title="Tan"></span>
+            <span class="w-8 h-8 rounded-full border border-stone-300 shadow-inner" style="background:#B5A99A" title="Neutral"></span>
+          </div>
+        </div>
+      ` : '';
+
+      // Flights callout if any flights occur on this day
+      const flightsHtml = day.dayFlights.length > 0 ? `
+        <div class="bg-sky-50/70 border border-sky-200/70 rounded-2xl p-4 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-aegean flex items-center gap-1.5">
+              <span>✈️</span>
+              <span>Flights Linked to ${day.shortDay} ${day.dateNum} Nov</span>
+            </h4>
+            <button
+              type="button"
+              onclick="switchTab('flights')"
+              class="text-xs font-semibold text-aegean hover:underline cursor-pointer"
+            >
+              Full Flight Tracker →
+            </button>
+          </div>
+          <div class="space-y-2">
+            ${day.dayFlights.map(f => `
+              <div class="flex flex-wrap items-center justify-between gap-2 bg-white rounded-xl px-3.5 py-2.5 border border-sky-100 text-xs sm:text-sm">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded-md font-bold text-[11px] ${f.type === 'Arrival' ? 'bg-olive-light text-olive' : 'bg-terracotta-light text-terracotta'}">
+                    ${f.type}
+                  </span>
+                  <span class="font-semibold text-stone-800">${f.time}</span>
+                  <span class="px-2 py-0.5 rounded-md bg-aegean text-white text-[11px] font-bold">${f.airport}</span>
+                </div>
+                <span class="text-stone-700 font-medium">${f.people}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : '';
+
+      // Prev / Next day navigation buttons
+      const idx = DAYS.findIndex(d => d.id === activeDayId);
+      const prevDay = idx > 0 ? DAYS[idx - 1] : null;
+      const nextDay = idx < DAYS.length - 1 ? DAYS[idx + 1] : null;
+
+      document.getElementById('day-detail-card').innerHTML = `
+        <article class="bg-white rounded-3xl border border-stone-200/80 shadow-sm overflow-hidden">
+          <!-- Day Header -->
+          <div class="p-5 sm:p-7 bg-gradient-to-r from-sand/70 via-limestone to-white border-b border-stone-200/70">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div>
+                <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                  <span class="text-xs font-semibold uppercase tracking-wider text-stone-500">${day.fullDate}</span>
+                  <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${day.badgeStyle}">${day.badge}</span>
+                </div>
+                <h3 class="font-serif text-2xl sm:text-3xl font-bold text-aegean-dark">${day.title}</h3>
+                <p class="text-sm text-stone-600 mt-1">${day.subtitle}</p>
+              </div>
+              ${planToggleHtml}
+            </div>
+          </div>
+
+          <!-- Day Body -->
+          <div class="p-5 sm:p-7 space-y-6">
+            ${dressCodeHtml}
+
+            <!-- Timeline Blocks -->
+            <div class="space-y-4">
+              ${blocksToRender.map(block => `
+                <div class="relative pl-5 border-l-2 border-ochre/60 space-y-1.5">
+                  <span class="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-aegean ring-4 ring-white"></span>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-aegean">${block.period}</span>
+                    <span class="text-xs font-medium text-stone-500">· ${block.time}</span>
+                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${block.statusColor}">${block.status}</span>
+                  </div>
+                  <h4 class="font-semibold text-base sm:text-lg text-stone-900">${block.title}</h4>
+                  <ul class="space-y-1.5 text-sm text-stone-600 leading-relaxed pt-0.5">
+                    ${block.details.map(line => `
+                      <li class="flex items-start gap-2">
+                        <span class="text-ochre mt-1 text-xs">●</span>
+                        <span>${line}</span>
+                      </li>
+                    `).join('')}
+                  </ul>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Food & Transport Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
+              <div class="bg-limestone rounded-2xl p-4 border border-stone-200/70">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-terracotta mb-1.5 flex items-center gap-1.5">
+                  <span>🍽️</span>
+                  <span>Food &amp; Dining</span>
+                </h4>
+                <p class="text-sm text-stone-700 leading-relaxed">${day.food}</p>
+              </div>
+              <div class="bg-limestone rounded-2xl p-4 border border-stone-200/70">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-aegean mb-1.5 flex items-center gap-1.5">
+                  <span>🚗</span>
+                  <span>Transport &amp; Timing</span>
+                </h4>
+                <p class="text-sm text-stone-700 leading-relaxed">${day.transport}</p>
+              </div>
+            </div>
+
+            ${flightsHtml}
+
+            <!-- Day Stepper Footer -->
+            <div class="flex items-center justify-between pt-4 border-t border-stone-100">
+              ${prevDay ? `
+                <button
+                  type="button"
+                  onclick="selectDay('${prevDay.id}')"
+                  class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-aegean hover:text-aegean-dark px-3 py-2 rounded-xl hover:bg-sand/70 transition cursor-pointer"
+                >
+                  <span>←</span>
+                  <span>${prevDay.shortDay} ${prevDay.dateNum}: ${prevDay.title}</span>
+                </button>
+              ` : '<span></span>'}
+
+              ${nextDay ? `
+                <button
+                  type="button"
+                  onclick="selectDay('${nextDay.id}')"
+                  class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-aegean hover:text-aegean-dark px-3 py-2 rounded-xl hover:bg-sand/70 transition cursor-pointer text-right"
+                >
+                  <span>${nextDay.shortDay} ${nextDay.dateNum}: ${nextDay.title}</span>
+                  <span>→</span>
+                </button>
+              ` : '<span></span>'}
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderOverviewGrid() {
+      const grid = document.getElementById('overview-cards-grid');
+      grid.innerHTML = DAYS.map(day => `
+        <div
+          onclick="setItineraryMode('daily'); selectDay('${day.id}');"
+          class="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-sm hover:border-aegean/50 hover:shadow-md transition cursor-pointer flex flex-col justify-between space-y-3"
+        >
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <span class="text-xs font-bold uppercase tracking-wider text-aegean">${day.shortDay} ${day.dateNum} ${day.month}</span>
+              <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${day.badgeStyle}">${day.badge}</span>
+            </div>
+            <h3 class="font-serif text-xl font-bold text-stone-900">${day.title}</h3>
+            <div class="mt-3 space-y-2 text-xs sm:text-sm text-stone-600">
+              <p><strong class="text-stone-800">Plan:</strong> ${day.summaryActivities}</p>
+              <p><strong class="text-stone-800">Food:</strong> ${day.summaryFood}</p>
+              <p><strong class="text-stone-800">Transport:</strong> ${day.summaryTransport}</p>
+              ${day.dayFlights.length > 0 ? `<p><strong class="text-aegean">Flights:</strong> ${day.summaryFlights}</p>` : ''}
+            </div>
+          </div>
+          <div class="pt-2 border-t border-stone-100 flex items-center justify-end text-xs font-semibold text-aegean">
+            View full day details →
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /* =========================================================================
+       6. RENDER FLIGHTS VIEW
+       ========================================================================= */
+    function populateTravelerFilter() {
+      const select = document.getElementById('filter-traveler');
+      const set = new Set();
+      ALL_FLIGHTS.forEach(f => f.travelers.forEach(t => set.add(t)));
+      const sorted = Array.from(set).sort();
+      sorted.forEach(person => {
+        const opt = document.createElement('option');
+        opt.value = person;
+        opt.textContent = person;
+        select.appendChild(opt);
+      });
+    }
+
+    function renderFlights() {
+      const traveler = document.getElementById('filter-traveler').value;
+      const airport = document.getElementById('filter-airport').value;
+      const direction = document.getElementById('filter-direction').value;
+
+      const filtered = ALL_FLIGHTS.filter(f => {
+        if (traveler !== 'ALL' && !f.travelers.includes(traveler)) return false;
+        if (airport !== 'ALL' && f.airport !== airport) return false;
+        if (direction !== 'ALL' && f.direction !== direction) return false;
+        return true;
+      });
+
+      const container = document.getElementById('flights-list');
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="bg-white rounded-2xl border border-stone-200 p-8 text-center text-stone-500">
+            <p class="font-semibold text-stone-700">No flights match your current filters.</p>
+            <button
+              type="button"
+              onclick="document.getElementById('filter-traveler').value='ALL'; document.getElementById('filter-airport').value='ALL'; document.getElementById('filter-direction').value='ALL'; renderFlights();"
+              class="mt-3 px-4 py-2 rounded-xl bg-aegean text-white text-xs font-semibold cursor-pointer"
+            >
+              Reset Filters
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      // Group flights by dayLabel preserving chronological order
+      const groups = [];
+      filtered.forEach(f => {
+        let g = groups.find(item => item.dayLabel === f.dayLabel);
+        if (!g) {
+          g = { dayLabel: f.dayLabel, flights: [] };
+          groups.push(g);
+        }
+        g.flights.push(f);
+      });
+
+      container.innerHTML = groups.map(group => `
+        <div class="space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-widest text-stone-500 px-1">${group.dayLabel}</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            ${group.flights.map(f => `
+              <div class="bg-white rounded-2xl border border-stone-200/80 p-4 sm:p-5 shadow-sm flex flex-col justify-between gap-3">
+                <div class="space-y-2.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full ${
+                      f.direction === 'Arrival' ? 'bg-olive-light text-olive' : 'bg-terracotta-light text-terracotta'
+                    }">
+                      <span>${f.direction === 'Arrival' ? '🛬' : '🛫'}</span>
+                      <span>${f.direction}</span>
+                    </span>
+                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold ${
+                      f.airport === 'CHQ' ? 'bg-aegean text-white' : 'bg-stone-800 text-white'
+                    }">
+                      ${f.airportName}
+                    </span>
+                  </div>
+
+                  <div class="font-serif text-2xl font-bold text-stone-900">
+                    ${f.time} <span class="text-xs font-sans font-normal text-stone-400">local Crete time</span>
+                  </div>
+
+                  <div class="flex flex-wrap gap-1.5 pt-0.5">
+                    ${f.travelers.map(t => `
+                      <span class="px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                        traveler === t
+                          ? 'bg-ochre/30 text-stone-900 ring-1 ring-ochre'
+                          : 'bg-sand text-stone-700'
+                      }">
+                        ${t}
+                      </span>
+                    `).join('')}
+                  </div>
+                </div>
+
+                <p class="text-xs text-stone-600 bg-limestone rounded-xl px-3 py-2 border border-stone-100 leading-relaxed">
+                  ${f.note}
+                </p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /* =========================================================================
+       7. INTERACTIVE LEAFLET MAP
+       ========================================================================= */
+    const MAP_FILTERS = [
+      { id: 'all', label: 'All Stops (13)' },
+      { id: 'villa', label: '🏠 Villa Base' },
+      { id: 'airport', label: '✈️ Airports' },
+      { id: 'main', label: '🌿 Main Sightseeing' },
+      { id: 'dining', label: '🍽️ Dining' },
+      { id: 'optional', label: '✨ Optional / Backups' }
+    ];
+
+    function renderMapFilters() {
+      const el = document.getElementById('map-filter-pills');
+      el.innerHTML = MAP_FILTERS.map(f => `
+        <button
+          type="button"
+          onclick="filterMapCategory('${f.id}')"
+          class="px-3.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+            activeMapFilter === f.id
+              ? 'bg-aegean text-white border-aegean shadow-sm'
+              : 'bg-white text-stone-700 border-stone-200 hover:bg-sand'
+          }"
+        >
+          ${f.label}
+        </button>
+      `).join('');
+    }
+
+    function initMapIfNeeded() {
+      if (mapInstance) return;
+
+      if (typeof L === 'undefined') {
+        document.getElementById('map-fallback').classList.remove('hidden');
+        return;
+      }
+
+      try {
+        mapInstance = L.map('crete-map', {
+          scrollWheelZoom: false
+        }).setView([35.33, 24.55], 9);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(mapInstance);
+
+        MAP_LOCATIONS.forEach(loc => {
+          const marker = L.circleMarker(loc.coords, {
+            radius: loc.category === 'villa' ? 10 : 8,
+            fillColor: loc.color,
+            color: '#ffffff',
+            weight: 2.5,
+            opacity: 1,
+            fillOpacity: 0.95
+          });
+
+          marker.bindPopup(`
+            <div class="p-1 max-w-[230px]">
+              <p class="text-[11px] font-bold uppercase tracking-wider" style="color:${loc.color}">${loc.dayTag}</p>
+              <h4 class="font-bold text-sm text-stone-900 mt-0.5">${loc.name}</h4>
+              <p class="text-xs text-stone-600 mt-1 leading-relaxed">${loc.description}</p>
+              <a
+                href="${loc.mapsUrl}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-block mt-2 text-xs font-semibold text-sky-700 underline"
+              >
+                Open in Google Maps ↗
+              </a>
+            </div>
+          `);
+
+          marker.addTo(mapInstance);
+          mapMarkers[loc.id] = marker;
+        });
+
+        applyMapFilterToMarkers();
+      } catch (err) {
+        document.getElementById('map-fallback').classList.remove('hidden');
+      }
+    }
+
+    function filterMapCategory(category) {
+      activeMapFilter = category;
+      renderMapFilters();
+      renderMapDirectory();
+      applyMapFilterToMarkers();
+    }
+
+    function applyMapFilterToMarkers() {
+      if (!mapInstance) return;
+      const visibleCoords = [];
+
+      MAP_LOCATIONS.forEach(loc => {
+        const marker = mapMarkers[loc.id];
+        if (!marker) return;
+        const show = activeMapFilter === 'all' || loc.category === activeMapFilter || loc.category === 'villa';
+        if (show) {
+          if (!mapInstance.hasLayer(marker)) marker.addTo(mapInstance);
+          visibleCoords.push(loc.coords);
+        } else {
+          if (mapInstance.hasLayer(marker)) mapInstance.removeLayer(marker);
+        }
+      });
+
+      if (visibleCoords.length > 1) {
+        mapInstance.fitBounds(visibleCoords, { padding: [36, 36], maxZoom: 12 });
+      } else if (visibleCoords.length === 1) {
+        mapInstance.setView(visibleCoords[0], 12);
+      }
+    }
+
+    function focusLocationOnMap(locId) {
+      const loc = MAP_LOCATIONS.find(l => l.id === locId);
+      if (!loc || !mapInstance) return;
+      const marker = mapMarkers[locId];
+      if (marker && !mapInstance.hasLayer(marker)) marker.addTo(mapInstance);
+      mapInstance.flyTo(loc.coords, 12, { duration: 0.7 });
+      if (marker) {
+        setTimeout(() => marker.openPopup(), 450);
+      }
+      document.getElementById('crete-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function renderMapDirectory() {
+      const grid = document.getElementById('map-locations-grid');
+      const list = MAP_LOCATIONS.filter(loc => activeMapFilter === 'all' || loc.category === activeMapFilter);
+
+      grid.innerHTML = list.map(loc => `
+        <div class="bg-white rounded-2xl border border-stone-200/80 p-4 shadow-sm flex flex-col justify-between gap-3">
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                <span class="w-2.5 h-2.5 rounded-full" style="background:${loc.color}"></span>
+                <span>${loc.dayTag}</span>
+              </span>
+            </div>
+            <h4 class="font-semibold text-sm text-stone-900">${loc.name}</h4>
+            <p class="text-xs text-stone-600 mt-1 leading-relaxed">${loc.description}</p>
+          </div>
+
+          <div class="flex items-center justify-between pt-2 border-t border-stone-100 text-xs font-semibold">
+            <button
+              type="button"
+              onclick="focusLocationOnMap('${loc.id}')"
+              class="text-aegean hover:underline cursor-pointer"
+            >
+              Show on map
+            </button>
+            <a
+              href="${loc.mapsUrl}"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-terracotta hover:underline"
+            >
+              Google Maps ↗
+            </a>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /* =========================================================================
+       8. TASKS CHECKLIST & COST ESTIMATOR
+       ========================================================================= */
+    const OWNERS = ['All', 'Isaac', 'David', 'Blessing', 'Joy', 'Group / Host'];
+
+    function filterOwner(owner) {
+      activeOwnerFilter = owner;
+      renderOwnerFilters();
+      renderChecklist();
+    }
+
+    function renderOwnerFilters() {
+      const container = document.getElementById('owner-filter-pills');
+      container.innerHTML = OWNERS.map(owner => `
+        <button
+          type="button"
+          onclick="filterOwner('${owner}')"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer border ${
+            activeOwnerFilter === owner
+              ? 'bg-aegean text-white border-aegean'
+              : 'bg-limestone text-stone-600 border-stone-200 hover:bg-sand'
+          }"
+        >
+          ${owner}
+        </button>
+      `).join('');
+    }
+
+    function toggleTask(taskId) {
+      checkedTasks[taskId] = !checkedTasks[taskId];
+      try {
+        localStorage.setItem('crete2026_checked_tasks', JSON.stringify(checkedTasks));
+      } catch (e) {
+        // Ignore storage restrictions in sandboxed iframes
+      }
+      renderChecklist();
+    }
+
+    function renderChecklist() {
+      const filtered = TBC_TASKS.filter(t => {
+        if (activeOwnerFilter === 'All') return true;
+        return t.owner.includes(activeOwnerFilter);
+      });
+
+      const doneCount = TBC_TASKS.filter(t => checkedTasks[t.id]).length;
+      document.getElementById('checklist-progress').textContent = `${doneCount} / ${TBC_TASKS.length} checked`;
+
+      const ul = document.getElementById('tbc-checklist');
+      ul.innerHTML = filtered.map(task => {
+        const isDone = !!checkedTasks[task.id];
+        return `
+          <li class="py-3 first:pt-1 last:pb-1">
+            <label class="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                ${isDone ? 'checked' : ''}
+                onchange="toggleTask('${task.id}')"
+                class="mt-1 w-4 h-4 rounded border-stone-300 text-olive focus:ring-olive cursor-pointer"
+              />
+              <div class="flex-1 text-sm">
+                <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+                  <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-sand text-aegean-dark">${task.owner}</span>
+                  <span class="text-[11px] font-medium text-stone-400">${task.day}</span>
+                </div>
+                <p class="leading-snug transition ${isDone ? 'line-through text-stone-400' : 'text-stone-700 group-hover:text-stone-900'}">
+                  ${task.text}
+                </p>
+              </div>
+            </label>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function toggleCost(costId) {
+      selectedCosts[costId] = !selectedCosts[costId];
+      renderCostEstimator();
+    }
+
+    function renderCostEstimator() {
+      const list = document.getElementById('cost-items-list');
+      let total = 0;
+
+      list.innerHTML = COST_ITEMS.map(item => {
+        const checked = !!selectedCosts[item.id];
+        if (checked) total += item.price;
+        return `
+          <label class="flex items-start justify-between gap-3 p-3.5 rounded-xl border transition cursor-pointer ${
+            checked ? 'bg-olive-light/50 border-olive/30' : 'bg-limestone border-stone-200/70 opacity-75'
+          }">
+            <div class="flex items-start gap-3">
+              <input
+                type="checkbox"
+                ${checked ? 'checked' : ''}
+                onchange="toggleCost('${item.id}')"
+                class="mt-1 w-4 h-4 rounded border-stone-300 text-olive focus:ring-olive cursor-pointer"
+              />
+              <div>
+                <p class="text-sm font-semibold text-stone-900">${item.name}</p>
+                <p class="text-xs text-stone-600 mt-0.5">${item.detail}</p>
+                <span class="inline-block mt-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-stone-600 border border-stone-200">
+                  ${item.status}
+                </span>
+              </div>
+            </div>
+            <span class="font-serif font-bold text-base text-aegean-dark shrink-0">
+              €${item.price.toFixed(2)}
+            </span>
+          </label>
+        `;
+      }).join('');
+
+      document.getElementById('cost-total-eur').textContent = `€${total.toFixed(2)}`;
+    }
+
+    /* =========================================================================
+       9. CLIPBOARD COPY & TOAST HELPER (No alert() / uses execCommand('copy'))
+       ========================================================================= */
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').textContent = msg;
+      toast.classList.remove('opacity-0', 'translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-2');
+      }, 2800);
+    }
+
+    function copyTripSummary() {
+      const summaryText = [
+        'Crete 2026 — Family Itinerary (Nov 23–28, 2026)',
+        'Villa: Pigi village, 74150 · https://maps.app.goo.gl/nRNBrYqobcNfegdF9?g_st=ic',
+        'Live Planning Sheet: https://docs.google.com/spreadsheets/d/1luNSuunYf-wndDNgNeLcIEW4yImsfbshw3T9Q8QGH18',
+        '',
+        '• Mon 23 Nov: Arrivals (HER 10:50 am, CHQ 5:55 pm), groceries & villa dinner',
+        '• Tue 24 Nov: South Crete Scenic Loop (Spili, Kourtaliotiko Gorge, Preveli, Plakias) + 11:25 pm CHQ pickup',
+        '• Wed 25 Nov: Pigi Olive Oil Experience (€80) + 5:00 pm Prima Plora Dinner (14 reserved; Brown/Off-White/Tan/Neutrals)',
+        '• Thu 26 Nov: Chill House Day, Pool & Thanksgiving Spit-Roasted Feast',
+        '• Fri 27 Nov: Chania Old Town (leave 7 am) + Tentative Boat (10 am–12:30 pm), Villa by 4 pm, Adeyemo Parents 8:15 pm CHQ',
+        '• Sat 28 Nov: Breakfast, Checkout & Departures (CHQ 11:20 am / 3:10 pm / 7:15 pm; HER 3:00 pm)'
+      ].join('\n');
+
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = summaryText;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Trip summary copied — ready to paste in group chat!');
+      } catch (err) {
+        showToast('Could not copy automatically — please select and copy.');
+      }
+    }
+
+    /* =========================================================================
+       10. INITIALIZE APP
+       ========================================================================= */
+    window.addEventListener('DOMContentLoaded', () => {
+      updateClockAndCountdown();
+      setInterval(updateClockAndCountdown, 30000);
+
+      renderDayPills();
+      renderDayDetail();
+      renderOverviewGrid();
+
+      populateTravelerFilter();
+      renderFlights();
+
+      renderMapFilters();
+      renderMapDirectory();
+
+      renderOwnerFilters();
+      renderChecklist();
+      renderCostEstimator();
+
+      document.getElementById('btn-copy-summary').addEventListener('click', copyTripSummary);
+    });
+  </script>
+</body>
+</html>
